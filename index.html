@@ -1,1 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>メモリーゲーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+
+        .info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 30px;
+            gap: 20px;
+        }
+
+        .info-box {
+            background: #f0f0f0;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 100px);
+            gap: 10px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+
+        .card {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 2em;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .card.flipped {
+            background: white;
+            color: #333;
+        }
+
+        .card.matched {
+            background: #4CAF50;
+            color: white;
+            cursor: default;
+        }
+
+        .card.matched:hover {
+            transform: none;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .reset-btn {
+            background: #667eea;
+            color: white;
+        }
+
+        .reset-btn:hover {
+            background: #5568d3;
+            transform: scale(1.05);
+        }
+
+        .message {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 メモリーゲーム</h1>
+        
+        <div class="info">
+            <div class="info-box">
+                移動数: <span id="moves">0</span>
+            </div>
+            <div class="info-box">
+                マッチ数: <span id="matches">0</span> / 8
+            </div>
+        </div>
+
+        <div class="game-board" id="gameBoard"></div>
+
+        <div class="button-group">
+            <button class="reset-btn" onclick="resetGame()">新しいゲーム</button>
+        </div>
+
+        <div class="message" id="message">🎉 ゲーム完了！おめでとう！</div>
+    </div>
+
+    <script>
+        const emojis = ['🍎', '🍎', '🍊', '🍊', '🍋', '🍋', '🍌', '🍌', 
+                       '🍉', '🍉', '🍓', '🍓', '🍒', '🍒', '🥝', '🥝'];
+        
+        let cards = [];
+        let flippedCards = [];
+        let matchedCards = [];
+        let moves = 0;
+        let isChecking = false;
+
+        function initGame() {
+            cards = [...emojis].sort(() => Math.random() - 0.5);
+            flippedCards = [];
+            matchedCards = [];
+            moves = 0;
+            isChecking = false;
+            
+            document.getElementById('moves').textContent = 0;
+            document.getElementById('matches').textContent = 0;
+            document.getElementById('message').classList.remove('show');
+            
+            renderBoard();
+        }
+
+        function renderBoard() {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            
+            cards.forEach((emoji, index) => {
+                const card = document.createElement('button');
+                card.className = 'card';
+                card.textContent = matchedCards.includes(index) ? emoji : '❓';
+                
+                if (matchedCards.includes(index)) {
+                    card.classList.add('matched');
+                } else if (flippedCards.includes(index)) {
+                    card.classList.add('flipped');
+                    card.textContent = emoji;
+                }
+                
+                card.onclick = () => flipCard(index);
+                gameBoard.appendChild(card);
+            });
+        }
+
+        function flipCard(index) {
+            if (isChecking || matchedCards.includes(index) || flippedCards.includes(index)) {
+                return;
+            }
+
+            flippedCards.push(index);
+            renderBoard();
+
+            if (flippedCards.length === 2) {
+                isChecking = true;
+                moves++;
+                document.getElementById('moves').textContent = moves;
+
+                setTimeout(() => {
+                    checkMatch();
+                }, 600);
+            }
+        }
+
+        function checkMatch() {
+            const [first, second] = flippedCards;
+            
+            if (cards[first] === cards[second]) {
+                matchedCards.push(first, second);
+                document.getElementById('matches').textContent = matchedCards.length / 2;
+                
+                if (matchedCards.length === cards.length) {
+                    document.getElementById('message').classList.add('show');
+                }
+            }
+            
+            flippedCards = [];
+            isChecking = false;
+            renderBoard();
+        }
+
+        function resetGame() {
+            initGame();
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
